@@ -25,6 +25,16 @@
     state: present
   when: ansible_distribution == 'Ubuntu' and ansible_distribution_version is version('20.04', '>=')
 
+- name: Add Docker apt key (on Ubuntu > 20.04).
+  apt_key:
+    url: "{{ docker_apt_gpg_key }}"
+    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    keyring: "{{ docker_keyring }}"
+    state: present
+  register: add_repository_key
+  ignore_errors: "{{ docker_apt_ignore_key_error }}"
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_version is version('20.04', '>')
+
 - name: Add Docker apt key.
   apt_key:
     url: "{{ docker_apt_gpg_key }}"
@@ -32,6 +42,7 @@
     state: present
   register: add_repository_key
   ignore_errors: "{{ docker_apt_ignore_key_error }}"
+  when: ansible_distribution != 'Ubuntu' or ansible_distribution_version is version('20.04', '<=')
 
 - name: Ensure curl is present (on older systems without SNI).
   package: name=curl state=present
@@ -44,8 +55,16 @@
     warn: false
   when: add_repository_key is failed
 
+- name: Add Docker repository (on Ubuntu > 20.04).
+  apt_repository:
+    repo: "{{ docker_apt_repository_signed_by }}"
+    state: present
+    update_cache: true
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_version is version('20.04', '>')
+
 - name: Add Docker repository.
   apt_repository:
     repo: "{{ docker_apt_repository }}"
     state: present
     update_cache: true
+  when: ansible_distribution != 'Ubuntu' or ansible_distribution_version is version('20.04', '<=')
